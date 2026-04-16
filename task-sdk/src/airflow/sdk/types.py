@@ -106,6 +106,7 @@ class DagRunProtocol(Protocol):
     run_after: AwareDatetime
     conf: dict[str, Any] | None
     triggering_user_name: str | None
+    partition_key: str | None
 
 
 class RuntimeTaskInstanceProtocol(Protocol):

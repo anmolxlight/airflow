@@ -267,6 +267,7 @@ class RuntimeTaskInstance(TaskInstance):
                 "prev_end_date_success": lazy_object_proxy.Proxy(
                     lambda: coerce_datetime(get_previous_dagrun_success(self.id).end_date)
                 ),
+                "partition_key": dag_run.partition_key,
             }
             self._cached_template_context.update(context_from_server)
 
