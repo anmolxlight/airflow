@@ -58,10 +58,11 @@ def _enable_tcp_keepalive(configuration: Configuration) -> None:
     This prevents urllib3 connections from hanging indefinitely when an idle
     connection is timed out by services like cloud load balancers or firewalls.
 
-    Uses the ``socket_options`` field on the Kubernetes ``Configuration`` object,
-    which is threaded through to the underlying urllib3 ``PoolManager`` and
-    ``HTTPConnection``, rather than monkey-patching urllib3 connection defaults
-    (which no longer works with urllib3 v2.x).
+    Uses the ``socket_options`` field on the Kubernetes ``Configuration`` object
+    (kubernetes >= 36.0.0), which is threaded through to the underlying urllib3
+    ``PoolManager`` and ``HTTPConnection``. Falls back to monkey-patching urllib3
+    connection defaults for older kubernetes clients where ``socket_options`` is
+    not available.
 
     See https://github.com/apache/airflow/pull/11406 for the original discussion
     and https://github.com/apache/airflow/issues/68396 for the urllib3 v2 fix.
@@ -94,7 +95,23 @@ def _enable_tcp_keepalive(configuration: Configuration) -> None:
     else:
         log.debug("Unable to set TCP_KEEPCNT on this platform")
 
-    configuration.socket_options = socket_options
+    if hasattr(configuration, "socket_options"):
+        configuration.socket_options = socket_options
+        return
+
+    # kubernetes client < 36.0.0: fall back to monkey-patching urllib3 defaults.
+    # Note: this only works with urllib3 < 2.0 where the default argument is
+    # evaluated per-connection rather than at import time.
+    from urllib3.connection import HTTPConnection, HTTPSConnection
+
+    if not hasattr(HTTPSConnection, "default_socket_options"):
+        log.debug("urllib3 connection class has no default_socket_options; skipping TCP keepalive")
+        return
+
+    existing_options = list(HTTPSConnection.default_socket_options)
+    HTTPSConnection.default_socket_options = existing_options + socket_options
+    if hasattr(HTTPConnection, "default_socket_options"):
+        HTTPConnection.default_socket_options = existing_options + socket_options
 
 
 def get_kube_client(

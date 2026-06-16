@@ -65,6 +65,9 @@ class TestClient:
         import socket
 
         configuration = Configuration()
+        if not hasattr(configuration, "socket_options"):
+            pytest.skip("Configuration.socket_options requires kubernetes client >= 36.0.0")
+
         assert configuration.socket_options is None
 
         _enable_tcp_keepalive(configuration)

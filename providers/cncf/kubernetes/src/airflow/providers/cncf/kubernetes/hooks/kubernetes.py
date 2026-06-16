@@ -97,12 +97,13 @@ class _TimeoutK8sApiClient(client.ApiClient):
         disable_verify_ssl: bool = False,
         enable_tcp_keepalive: bool = False,
     ) -> None:
-        if configuration is None and (disable_verify_ssl or enable_tcp_keepalive):
-            configuration = client.Configuration.get_default_copy()
-        if disable_verify_ssl:
-            configuration.verify_ssl = False
-        if enable_tcp_keepalive:
-            _enable_tcp_keepalive(configuration)
+        if disable_verify_ssl or enable_tcp_keepalive:
+            if configuration is None:
+                configuration = client.Configuration.get_default_copy()
+            if disable_verify_ssl:
+                configuration.verify_ssl = False
+            if enable_tcp_keepalive:
+                _enable_tcp_keepalive(configuration)
         super().__init__(configuration=configuration)
 
     def call_api(self, *args, **kwargs):
